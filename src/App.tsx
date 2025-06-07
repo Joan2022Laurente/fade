@@ -154,7 +154,7 @@ export default function AudioCrossfadeApp() {
         </div>
 
         {!started ? (
-          <Card className="bg-gray-900 border-gray-800 mx-2 sm:mx-0">
+          <Card className="bg-gray-950 border-gray-900 mx-2 sm:mx-0">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-white text-lg sm:text-xl">
                 <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -223,6 +223,7 @@ export default function AudioCrossfadeApp() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:justify-center">
                   <Button
                     onClick={() => crossfadeTo("A")}
