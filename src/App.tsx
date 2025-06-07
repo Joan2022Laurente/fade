@@ -3,12 +3,9 @@ import * as Tone from 'tone';
 
 function App() {
   const [started, setStarted] = useState(false);
-
-  // refs para los players y el reverb
   const playerA = useRef<Tone.Player | null>(null);
   const playerB = useRef<Tone.Player | null>(null);
   const reverb = useRef<Tone.Reverb | null>(null);
-
   const [current, setCurrent] = useState<'A' | 'B' | null>(null);
 
   // Parámetros
@@ -16,19 +13,21 @@ function App() {
   const [volume, setVolume] = useState(-6);
   const [decay, setDecay] = useState(3.5);
   const [wet, setWet] = useState(0.5);
-  const [detune, setDetune] = useState(0);
-
-  // URLs de archivos cargados por el usuario
-  const [fileA, setFileA] = useState<string | null>(null);
-  const [fileB, setFileB] = useState<string | null>(null);
 
   const fadeTime = 4; // segundos para crossfade
+
+  // Para archivos cargados dinámicamente
+  const [fileA, setFileA] = useState<File | null>(null);
+  const [fileB, setFileB] = useState<File | null>(null);
+
+  // Para guardar URLs temporales
+  const urlA = useRef<string | null>(null);
+  const urlB = useRef<string | null>(null);
 
   const logEvent = (msg: string) => {
     console.log(`[LOG]: ${msg}`);
   };
 
-  // Inicializa Tone y crea el Reverb y los players vacíos
   const handleStart = async () => {
     await Tone.start();
 
@@ -41,47 +40,30 @@ function App() {
     await rev.generate();
     reverb.current = rev;
 
-    // Crea los players con los archivos seleccionados o ninguno
-    playerA.current = new Tone.Player({
-      url: fileA || undefined,
-      playbackRate: rate,
-      volume: -Infinity,
-      autostart: false,
-      detune,
-    }).connect(rev);
+    if (fileA) {
+      if (urlA.current) URL.revokeObjectURL(urlA.current);
+      urlA.current = URL.createObjectURL(fileA);
+      playerA.current = new Tone.Player({
+        url: urlA.current,
+        playbackRate: rate,
+        volume: -Infinity,
+        autostart: false,
+      }).connect(rev);
+    }
 
-    playerB.current = new Tone.Player({
-      url: fileB || undefined,
-      playbackRate: rate,
-      volume: -Infinity,
-      autostart: false,
-      detune,
-    }).connect(rev);
+    if (fileB) {
+      if (urlB.current) URL.revokeObjectURL(urlB.current);
+      urlB.current = URL.createObjectURL(fileB);
+      playerB.current = new Tone.Player({
+        url: urlB.current,
+        playbackRate: rate,
+        volume: -Infinity,
+        autostart: false,
+      }).connect(rev);
+    }
 
     setStarted(true);
     logEvent('Sonido iniciado');
-  };
-
-  // Función para actualizar la URL y reiniciar el player con nuevo archivo
-  const loadFile = (file: File, playerRef: React.MutableRefObject<Tone.Player | null>, setFileUrl: React.Dispatch<React.SetStateAction<string | null>>, playerName: 'A' | 'B') => {
-    const url = URL.createObjectURL(file);
-    setFileUrl(url);
-    logEvent(`Archivo cargado para player ${playerName}: ${file.name}`);
-
-    if (playerRef.current) {
-      // Detenemos y desconectamos el player anterior
-      playerRef.current.stop();
-      playerRef.current.disconnect();
-
-      // Creamos un nuevo player con el nuevo archivo
-      playerRef.current = new Tone.Player({
-        url,
-        playbackRate: rate,
-        volume: playerName === current ? volume : -Infinity,
-        autostart: false,
-        detune,
-      }).connect(reverb.current!);
-    }
   };
 
   const crossfadeTo = (target: 'A' | 'B') => {
@@ -95,7 +77,6 @@ function App() {
     }
 
     fadeInPlayer.playbackRate = rate;
-    fadeInPlayer.detune = detune;
 
     fadeInPlayer.volume.cancelScheduledValues(Tone.now());
     fadeInPlayer.volume.setValueAtTime(fadeInPlayer.volume.value, Tone.now());
@@ -120,7 +101,6 @@ function App() {
 
     if (playerA.current) {
       playerA.current.playbackRate = rate;
-      playerA.current.detune = detune;
       if (current === 'A') {
         playerA.current.volume.value = volume;
       }
@@ -128,12 +108,11 @@ function App() {
 
     if (playerB.current) {
       playerB.current.playbackRate = rate;
-      playerB.current.detune = detune;
       if (current === 'B') {
         playerB.current.volume.value = volume;
       }
     }
-  }, [rate, volume, detune, current, started]);
+  }, [rate, volume, current, started]);
 
   useEffect(() => {
     if (reverb.current) {
@@ -142,22 +121,29 @@ function App() {
     }
   }, [decay, wet]);
 
+  // Limpia URLs al desmontar
+  useEffect(() => {
+    return () => {
+      if (urlA.current) URL.revokeObjectURL(urlA.current);
+      if (urlB.current) URL.revokeObjectURL(urlB.current);
+    };
+  }, []);
+
   return (
     <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: 600, margin: 'auto' }}>
-      <h1>🧠 Sonido Mental con Crossfade y carga dinámica</h1>
+      <h1>🧠 Sonido Mental con Crossfade</h1>
 
       {!started && (
         <>
           <div style={{ marginBottom: '1rem' }}>
             <label>
-              Cargar archivo para Player A:
+              Cargar audio para Player A:
               <input
                 type="file"
                 accept="audio/*"
                 onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    loadFile(e.target.files[0], playerA, setFileA, 'A');
-                  }
+                  setFileA(e.target.files ? e.target.files[0] : null);
+                  logEvent('Archivo A cargado');
                 }}
               />
             </label>
@@ -165,14 +151,13 @@ function App() {
 
           <div style={{ marginBottom: '1rem' }}>
             <label>
-              Cargar archivo para Player B:
+              Cargar audio para Player B:
               <input
                 type="file"
                 accept="audio/*"
                 onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    loadFile(e.target.files[0], playerB, setFileB, 'B');
-                  }
+                  setFileB(e.target.files ? e.target.files[0] : null);
+                  logEvent('Archivo B cargado');
                 }}
               />
             </label>
@@ -181,8 +166,7 @@ function App() {
           <button
             onClick={handleStart}
             disabled={!fileA || !fileB}
-            style={{ padding: '10px 20px', fontSize: '16px' }}
-            title={!fileA || !fileB ? 'Carga ambos archivos primero' : undefined}
+            style={{ padding: '10px 20px', fontSize: '16px', marginTop: '1rem' }}
           >
             Iniciar Sonido
           </button>
@@ -256,21 +240,6 @@ function App() {
               onChange={(e) => {
                 setWet(parseFloat(e.target.value));
                 logEvent(`Wet cambiado a ${e.target.value}`);
-              }}
-            />
-          </label>
-
-          <label>
-            🌀 Detune ({detune} cents)
-            <input
-              type="range"
-              min="-1200"
-              max="1200"
-              step="10"
-              value={detune}
-              onChange={(e) => {
-                setDetune(parseFloat(e.target.value));
-                logEvent(`Detune cambiado a ${e.target.value} cents`);
               }}
             />
           </label>
