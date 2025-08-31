@@ -160,12 +160,12 @@ export default function AudioCrossfadeApp() {
           <div className="flex items-center justify-center gap-2 sm:gap-3">
             {/* <Brain className="w-6 h-6 sm:w-8 sm:h-8 text-white" /> */}
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-              mala notica mi jenteh
+              fade
             </h1>
             {/* <Headphones className="w-6 h-6 sm:w-8 sm:h-8 text-white" /> */}
           </div>
           <p className="text-gray-400 text-sm sm:text-base lg:text-lg px-4">
-            Mala noticiah
+            ...
           </p>
         </div>
 
